@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:eformsign;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  admin:
+    id: lim063033@gmail.com
+    password: Dlawodjs630!
+
+eformsign:
+  api:
+    url: https://kr-api.eformsign.com
+    key: "bacee34d-2e6c-410c-a539-ff233de4c222"
+  secret:
+    key: "1234"
+  company:
+    id: "42a6d34517864fbca8d3788927089f60"
+logging:
+  level:
+    com.eformsign: DEBUG

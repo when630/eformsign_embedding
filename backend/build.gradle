@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+bootJar.enabled = false
+
+allprojects {
+    group = 'com.eformsign'
+    version = '0.0.1-SNAPSHOT'
+    
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'java-library'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        sourceCompatibility = '17'
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+}
+
+project(':core-common') {
+    bootJar.enabled = false
+    jar.enabled = true
+
+    dependencies {
+        api 'org.springframework.boot:spring-boot-starter-data-jpa'
+        api 'org.springframework.boot:spring-boot-starter-validation'
+        api 'io.jsonwebtoken:jjwt-api:0.11.5'
+        runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+        runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    }
+}
+
+project(':core-storage') {
+    bootJar.enabled = false
+    jar.enabled = true
+
+    dependencies {
+        api project(':core-common')
+    }
+}
+
+project(':api-server') {
+    dependencies {
+        implementation project(':core-common')
+        implementation project(':core-storage')
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-logging'
+        // DB (Using H2 for POC as requested/template implies H2 for test, but we use for local)
+        runtimeOnly 'com.h2database:h2'
+        // For Eformsign API
+        implementation 'org.springframework.boot:spring-boot-starter-webflux' // for WebClient
+    }
+}

@@ -1,0 +1,31 @@
+# OS / IDE
+.DS_Store
+.idea
+.vscode
+*.log
+
+# Backend (Spring Boot / Gradle)
+backend/.gradle
+backend/build
+backend/out
+backend/bin
+backend/*.log
+backend/local.properties
+
+# Frontend (Next.js / Node)
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/build
+frontend/dist
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnp*
+
+# Root (Just in case)
+node_modules/
+*.pdf

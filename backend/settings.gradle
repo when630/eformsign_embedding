@@ -1,0 +1,5 @@
+rootProject.name = 'eformsign-poc'
+
+include 'core-common'
+include 'core-storage'
+include 'api-server'
