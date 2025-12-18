@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "eformsign POC",
-  description: "eformsign Integration Proof of Concept",
+  title: "eformsign Embedding Sample",
+  description: "eformsign Embedding Sample",
 };
 
 import Sidebar from "@/components/Sidebar";

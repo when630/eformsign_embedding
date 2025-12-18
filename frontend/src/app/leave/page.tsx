@@ -255,7 +255,7 @@ export default function LeavePage() {
                     <th className="px-4 py-3">신청일자</th>
                     <th className="px-4 py-3">휴가구분</th>
                     <th className="px-4 py-3">휴가기간</th>
-                    <th className="px-4 py-3">일간</th>
+                    <th className="px-4 py-3">일수</th>
                     <th className="px-4 py-3 text-center w-24">상태</th>
                   </tr>
                 </thead>
@@ -293,7 +293,7 @@ export default function LeavePage() {
                       <td className="px-4 py-3 text-gray-500">
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{doc.fields?.find(f => f.id === '일간')?.value || '-'}일간</span>
+                          <span>{doc.fields?.find(f => f.id === '일간')?.value || '-'}일</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">

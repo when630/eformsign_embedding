@@ -145,7 +145,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-50">
       <div className="p-6 border-b border-gray-100">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold text-black-600">Embeding Sample</span>
+          <span className="text-xl font-bold text-black-600">Embedding Sample</span>
         </Link>
       </div>
 
