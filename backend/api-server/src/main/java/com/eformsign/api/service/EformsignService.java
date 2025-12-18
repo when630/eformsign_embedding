@@ -88,25 +88,85 @@ public class EformsignService {
         .block();
   }
 
-  public Map<String, Object> getDocuments(String memberId, String type) {
+  public Map<String, Object> getDocuments(String memberId, String type, String documentName, String templateId,
+      Integer page, Integer limit) {
     String accessToken = (String) getAccessToken(memberId).get("access_token");
 
     Map<String, Object> body = new HashMap<>();
     String typeCode = (type != null && !type.isEmpty()) ? type : "01"; // Default to 01 (Todo) or 04 (All)
 
+    int pageNum = (page != null && page > 0) ? page : 1;
+    int limitNum = (limit != null && limit > 0) ? limit : 20;
+    int skip = (pageNum - 1) * limitNum;
+
     body.put("type", typeCode);
-    body.put("limit", "20");
-    body.put("skip", "0");
-    body.put("template_ids", new String[] {});
-    body.put("title", "");
+    body.put("limit", String.valueOf(limitNum));
+    body.put("skip", String.valueOf(skip));
+
+    // Logic:
+    // 1. If templateId is provided (from query param), use it.
+    // 2. If not, and documentName is provided, try to lookup template by name
+    // (legacy support/robustness).
+    // 3. Fallback to title search if no template found.
+
+    List<String> templateIds = new ArrayList<>();
+
+    if (templateId != null && !templateId.isEmpty()) {
+      templateIds.add(templateId);
+    } else if (documentName != null && !documentName.isEmpty()) {
+      // Try lookup by name
+      try {
+        Map<String, Object> templatesResponse = getTemplates(memberId);
+        List<Map<String, Object>> forms = (List<Map<String, Object>>) templatesResponse.get("forms");
+        if (forms != null) {
+          for (Map<String, Object> form : forms) {
+            String formName = (String) form.get("form_name");
+            if (documentName.equals(formName)) {
+              templateIds.add((String) form.get("form_id"));
+            }
+          }
+        }
+      } catch (Exception e) {
+        log.warn("Failed to lookup template ID for name: " + documentName, e);
+      }
+    }
+
+    body.put("template_ids", templateIds.toArray(new String[0]));
+
+    if (documentName != null && !documentName.isEmpty() && templateIds.isEmpty()) {
+      body.put("title", documentName);
+    } else {
+      body.put("title", "");
+    }
+
     body.put("content", "");
     body.put("title_and_content", "");
+    body.put("return_fields", java.util.Arrays.asList("신청자명", "신청일", "일간"));
 
     return webClient.method(org.springframework.http.HttpMethod.GET)
         .uri("/v2.0/api/documents")
         .header("Authorization", "Bearer " + accessToken)
         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
         .bodyValue(body)
+        .retrieve()
+        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+        })
+        .block();
+  }
+
+  public Map<String, Object> getDocument(String memberId, String documentId) {
+    String accessToken = (String) getAccessToken(memberId).get("access_token");
+
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .path("/v2.0/api/documents/" + documentId)
+            .queryParam("include_fields", "true")
+            .queryParam("include_histories", "true")
+            .queryParam("include_previous_status", "true")
+            .queryParam("include_next_status", "true")
+            .build())
+        .header("Authorization", "Bearer " + accessToken)
+        .header("Content-Type", "application/json")
         .retrieve()
         .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
         })

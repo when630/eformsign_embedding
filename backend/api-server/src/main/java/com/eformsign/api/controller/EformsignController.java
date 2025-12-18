@@ -34,8 +34,19 @@ public class EformsignController {
   @GetMapping("/documents")
   public ApiResponse<Map<String, Object>> getDocuments(
       @LoginUser String userId,
-      @org.springframework.web.bind.annotation.RequestParam(required = false) String type) {
-    return ApiResponse.success(eformsignService.getDocuments(userId, type));
+      @org.springframework.web.bind.annotation.RequestParam(required = false) String type,
+      @org.springframework.web.bind.annotation.RequestParam(required = false) String documentName,
+      @org.springframework.web.bind.annotation.RequestParam(required = false) String templateId,
+      @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "1") Integer page,
+      @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "20") Integer limit) {
+    return ApiResponse.success(eformsignService.getDocuments(userId, type, documentName, templateId, page, limit));
+  }
+
+  @GetMapping("/documents/{documentId}")
+  public ApiResponse<Map<String, Object>> getDocument(
+      @LoginUser String userId,
+      @org.springframework.web.bind.annotation.PathVariable String documentId) {
+    return ApiResponse.success(eformsignService.getDocument(userId, documentId));
   }
 
   @org.springframework.web.bind.annotation.PostMapping("/documents")

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
-import { Plus, Trash2, Edit, X, Search, Users, Check, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Edit, X, Search, UserPlus, Check, ChevronDown } from "lucide-react";
 
 interface Member {
   id: string;
@@ -200,7 +200,7 @@ export default function GroupManagementPage() {
       <header className="mb-10 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="w-8 h-8" />
+            <UserPlus className="w-8 h-8" />
             그룹 관리
           </h1>
           <p className="text-gray-500 mt-1">조직의 그룹을 관리하고 멤버를 할당합니다.</p>
@@ -266,7 +266,7 @@ export default function GroupManagementPage() {
           </table>
           {filteredGroups.length === 0 && (
             <div className="p-12 text-center text-gray-400 flex flex-col items-center">
-              <Users size={48} className="mb-4 opacity-20" />
+              <UserPlus size={48} className="mb-4 opacity-20" />
               <p>등록된 그룹이 없습니다.</p>
             </div>
           )}
