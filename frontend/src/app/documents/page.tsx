@@ -64,9 +64,13 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
   useEffect(() => {
     fetchDocuments();
-  }, [filter]);
+  }, [filter, page]);
 
   const getDocTypeFromFilter = () => {
     switch (filter) {
@@ -81,15 +85,19 @@ export default function DocumentsPage() {
     setLoading(true);
     try {
       const type = getDocTypeFromFilter();
-      console.log(`Fetching documents with type: ${type}`);
+      console.log(`Fetching documents with type: ${type}, page: ${page}, limit: ${limit}`);
 
       const response = await api.get("/eformsign/documents", {
-        params: { type }
+        params: { type, page, limit }
       });
 
       console.log("Documents API Response:", response.data);
-      const list = response.data.documents || response.data.data?.documents || [];
+      const resData = response.data.data || response.data;
+      const list = resData.documents || [];
+      const total = resData.total_rows || resData.total_count || list.length; // Use total_rows from API
+
       setDocuments(list);
+      setTotalCount(total);
     } catch (error) {
       console.error("Failed to fetch documents", error);
     } finally {
@@ -97,8 +105,13 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleOpenDocument = (docId: string) => {
-    router.push(`/document?document_id=${docId}`);
+  const handleOpenDocument = (doc: Document) => {
+    // Determine mode based on status
+    // 003: Complete, 042: Cancel, 049: Delete -> Preview (03)
+    // Others -> Action/Processing (02) - Default
+    const isViewOnly = ["003", "042", "049"].includes(doc.current_status.status_type);
+    const mode = isViewOnly ? "preview" : "action";
+    router.push(`/document?document_id=${doc.id}&mode=${mode}`);
   };
 
   const calculateElapsedDays = (createdDate: number) => {
@@ -109,20 +122,60 @@ export default function DocumentsPage() {
 
   const getStatusText = (statusType: string) => {
     switch (statusType) {
-      case "060": return "진행중";
-      case "001": return "임시저장";
-      case "099": return "완료";
-      default: return "진행중"; // Fallback
+      case "001": return "초안";
+      case "002": return "문서 작성";
+      case "003": return "문서 완료";
+      case "010": return "결재요청";
+      case "011": return "결재 반려";
+      case "012": return "결재 승인";
+      case "013": return "결재 요청 취소";
+      case "020": return "내부자 요청";
+      case "021": return "내부자 반려";
+      case "022": return "내부자 승인";
+      case "023": return "내부자 임시 저장";
+      case "030": return "외부자 요청";
+      case "031": return "외부자 반려";
+      case "032": return "외부자 승인";
+      case "033": return "외부자 재 요청";
+      case "034": return "외부자 열람";
+      case "035": return "외부자 임시 저장";
+      case "040": return "문서 취소 요청";
+      case "041": return "문서 취소 요청 거절";
+      case "042": return "문서 취소";
+      case "043": return "문서 수정";
+      case "044": return "문서 수정 취소";
+      case "045": return "문서 반려 요청";
+      case "046": return "문서 반려 요청 거절";
+      case "047": return "문서 삭제 요청";
+      case "048": return "문서 삭제 요청 거절";
+      case "049": return "문서 삭제";
+      case "050": return "완료 문서 PDF 전송";
+      case "051": return "문서 이관";
+      case "060": return "참여자 요청";
+      case "061": return "참여자 반려";
+      case "062": return "참여자 승인";
+      case "063": return "참여자 재요청";
+      case "064": return "참여자 문서 열람";
+      case "070": return "검토자 요청";
+      case "071": return "검토자 반려";
+      case "072": return "검토자 승인";
+      case "073": return "검토자 재요청";
+      case "074": return "검토자 문서 열람";
+      default: return "상태 모름";
     }
   };
 
   const getStatusColor = (statusType: string) => {
-    switch (statusType) {
-      case "099": return "bg-green-100 text-green-800";
-      case "001": return "bg-gray-100 text-gray-800";
-      case "060": return "bg-blue-100 text-blue-800";
-      default: return "bg-blue-100 text-blue-800";
-    }
+    // Green: Complete, Approve
+    if (["003", "012", "022", "032", "062", "072"].includes(statusType)) return "bg-green-100 text-green-800";
+    // Red: Reject, Delete, Refuse
+    if (["011", "021", "031", "041", "046", "048", "049", "061", "071"].includes(statusType)) return "bg-red-100 text-red-800";
+    // Gray: Tempsave, Cancel, Revoke
+    if (["001", "013", "023", "035", "042", "044"].includes(statusType)) return "bg-gray-100 text-gray-800";
+    // Orange/Yellow: Requests for Delete/Cancel/Update
+    if (["040", "043", "045", "047"].includes(statusType)) return "bg-orange-100 text-orange-800";
+    // Default Blue: In creating, requests, active steps
+    return "bg-blue-100 text-blue-800";
   };
 
   const getPageTitle = () => {
@@ -142,6 +195,8 @@ export default function DocumentsPage() {
       default: return <FileText className="w-8 h-8" />;
     }
   };
+
+  const totalPages = Math.ceil(totalCount / limit);
 
   return (
     <div className="min-h-screen p-8 max-w-7xl mx-auto">
@@ -177,7 +232,7 @@ export default function DocumentsPage() {
                   <tr
                     key={doc.id}
                     className="hover:bg-blue-50/50 transition-colors cursor-pointer text-sm"
-                    onClick={() => handleOpenDocument(doc.id)}
+                    onClick={() => handleOpenDocument(doc)}
                   >
                     {/* Status */}
                     <td className="px-4 py-3 text-center">
@@ -241,6 +296,50 @@ export default function DocumentsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 flex items-center justify-between sm:px-6">
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{' '}
+                  <span className="font-medium">{totalCount}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => setPage(i + 1)}
+                      className={clsx(
+                        "relative inline-flex items-center px-4 py-2 border text-sm font-medium",
+                        page === i + 1
+                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                          : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                      )}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages || totalPages === 0}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
           </div>
         </div>
       )}

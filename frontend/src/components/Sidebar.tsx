@@ -7,7 +7,7 @@ import {
   FileText, Files, Home, LogOut, User, Users,
   Settings, CheckSquare, Clock, Grid2X2, UserPlus,
   ClipboardList, Folder, ChevronDown, ChevronRight,
-  Calendar1,
+  Plane,
 } from "lucide-react";
 import api from "@/lib/api";
 import Image from "next/image";
@@ -88,7 +88,7 @@ export default function Sidebar() {
       icon: Folder,
       children: eformsignChildren
     },
-    { name: "휴가 관리", href: "/leave", icon: Calendar1 },
+    { name: "휴가 관리", href: "/leave", icon: Plane },
     { name: "설정", href: "/settings", icon: Settings },
   ];
 
@@ -145,8 +145,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-50">
       <div className="p-6 border-b border-gray-100">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo-default.png" alt="eformsign" width={120} height={32} className="h-8 w-auto cursor-pointer" priority />
-          <span className="text-xl font-bold text-black-600">PoC</span>
+          <span className="text-xl font-bold text-black-600">Embeding Sample</span>
         </Link>
       </div>
 
