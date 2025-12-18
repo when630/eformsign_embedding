@@ -23,7 +23,7 @@ spring:
 app:
   admin:
     id: lim063033@gmail.com
-    password: Dlawodjs630!
+    password: password
 
 eformsign:
   api:
