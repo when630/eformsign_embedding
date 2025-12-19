@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Script from "next/script";
 import api from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
 
-export default function TemplateEditorPage() {
+function TemplateEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template_id");
@@ -221,5 +221,13 @@ export default function TemplateEditorPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function TemplateEditorPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TemplateEditorContent />
+    </Suspense>
   );
 }
