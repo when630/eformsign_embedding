@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { FileText, Clock, AlertCircle, History as HistoryIcon, User, CheckSquare } from "lucide-react";
@@ -56,7 +56,7 @@ interface Document {
   histories: History[];
 }
 
-export default function DocumentsPage() {
+function DocumentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filter = searchParams.get("filter"); // 'todo', 'inprogress', 'completed'
@@ -344,5 +344,13 @@ export default function DocumentsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DocumentsContent />
+    </Suspense>
   );
 }
