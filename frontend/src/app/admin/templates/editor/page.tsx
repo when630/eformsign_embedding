@@ -211,11 +211,10 @@ function TemplateEditorContent() {
           <div className="flex-1 flex items-center justify-center text-red-500">설정 로드 실패</div>
         ) : (
           <div className="flex-1 relative w-full h-full p-4">
-            {/* Use iframe as previously discovered it's better */}
-            <iframe
+            {/* Use div as container for SDK injection */}
+            <div
               id="eformsign_iframe"
-              className="w-full bg-white shadow-sm border border-gray-200"
-              style={{ height: "200%" }}
+              className="w-full bg-white shadow-sm border border-gray-200 h-full"
             />
           </div>
         )}
