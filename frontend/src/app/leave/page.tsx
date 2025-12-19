@@ -81,7 +81,8 @@ export default function LeavePage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const response = await api.get("/eformsign/documents?templateId=eab9eb5f3d9f4d1d9728c9aa96e34c1e&type=04");
+      const templateId = process.env.NEXT_PUBLIC_EFORMSIGN_LEAVE_TEMPLATE_ID || "";
+      const response = await api.get(`/eformsign/documents?templateId=${templateId}&type=04`);
 
       let initialDocs: Document[] = [];
       if (response.data.success) {
@@ -170,7 +171,7 @@ export default function LeavePage() {
       },
       mode: {
         type: "01", // New Document
-        template_id: "eab9eb5f3d9f4d1d9728c9aa96e34c1e" // Leave Application Template ID
+        template_id: process.env.NEXT_PUBLIC_EFORMSIGN_LEAVE_TEMPLATE_ID || "" // Leave Application Template ID
       },
       layout: {
         lang_code: "ko"
