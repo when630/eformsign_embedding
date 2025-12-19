@@ -215,7 +215,7 @@ function TemplateEditorContent() {
             <iframe
               id="eformsign_iframe"
               className="w-full bg-white shadow-sm border border-gray-200"
-              style={{ height: "100%" }}
+              style={{ height: "200%" }}
             />
           </div>
         )}
