@@ -66,6 +66,7 @@ project(':api-server') {
         implementation 'org.springframework.boot:spring-boot-starter-logging'
         // DB (Using H2 for POC as requested/template implies H2 for test, but we use for local)
         runtimeOnly 'com.h2database:h2'
+        runtimeOnly 'org.postgresql:postgresql'
         // For Eformsign API
         implementation 'org.springframework.boot:spring-boot-starter-webflux' // for WebClient
     }
