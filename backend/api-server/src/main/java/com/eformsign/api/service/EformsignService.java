@@ -75,10 +75,11 @@ public class EformsignService {
   public Map<String, Object> getTemplates(String memberId) {
     String accessToken = (String) getAccessToken(memberId).get("access_token");
 
-    return webClient.get()
+    Map<String, Object> response = webClient.get()
         .uri(uriBuilder -> uriBuilder
             .path("/v2.0/api/forms")
             .queryParam("member_id", memberId)
+            .queryParam("limit", "1000") // Fetch up to 1000
             .build())
         .header("Authorization", "Bearer " + accessToken)
         .header("Content-Type", "application/json")
@@ -86,6 +87,8 @@ public class EformsignService {
         .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
         })
         .block();
+
+    return response;
   }
 
   public Map<String, Object> getDocuments(String memberId, String type, String documentName, String templateId,
@@ -103,12 +106,6 @@ public class EformsignService {
     body.put("limit", String.valueOf(limitNum));
     body.put("skip", String.valueOf(skip));
 
-    // Logic:
-    // 1. If templateId is provided (from query param), use it.
-    // 2. If not, and documentName is provided, try to lookup template by name
-    // (legacy support/robustness).
-    // 3. Fallback to title search if no template found.
-
     List<String> templateIds = new ArrayList<>();
 
     if (templateId != null && !templateId.isEmpty()) {
@@ -116,8 +113,26 @@ public class EformsignService {
     } else if (documentName != null && !documentName.isEmpty()) {
       // Try lookup by name
       try {
+        // We need to fetch all templates to find the ID, so pass null/null for simple
+        // fetch if this method was recursive,
+        // but here getTemplates is now paginated.
+        // For lookup, we probably want *all* templates.
+        // Let's call the raw API or passed large limit.
+        // For safety, let's just make a private internal method for fetching all or use
+        // a large limit here.
         Map<String, Object> templatesResponse = getTemplates(memberId);
-        List<Map<String, Object>> forms = (List<Map<String, Object>>) templatesResponse.get("forms");
+        List<Map<String, Object>> forms = (List<Map<String, Object>>) templatesResponse.get("forms"); // The
+                                                                                                      // paginateListResult
+                                                                                                      // puts generic
+                                                                                                      // list in
+                                                                                                      // "forms"? No,
+                                                                                                      // paginateListResult
+                                                                                                      // returns
+                                                                                                      // consistent
+                                                                                                      // structure.
+        // Wait, paginateListResult will return { "forms": [...], "total_count": ... }
+        // so this is fine.
+
         if (forms != null) {
           for (Map<String, Object> form : forms) {
             String formName = (String) form.get("form_name");
@@ -176,7 +191,6 @@ public class EformsignService {
   // --- Template Management ---
   public Map<String, Object> duplicateTemplate(String memberId, String templateId) {
     String accessToken = (String) getAccessToken(memberId).get("access_token");
-    // Assuming POST /v2.0/api/forms/{form_id}/duplicate
     return webClient.post()
         .uri("/v2.0/api/forms/" + templateId + "/copy")
         .header("Authorization", "Bearer " + accessToken)
@@ -188,18 +202,21 @@ public class EformsignService {
   }
 
   // --- Member Management ---
-  public Map<String, Object> getMembers(String memberId) {
+  public Map<String, Object> getMembers(String memberId, Integer page, Integer limit) {
     String accessToken = (String) getAccessToken(memberId).get("access_token");
-    return webClient.get()
+    Map<String, Object> response = webClient.get()
         .uri(uriBuilder -> uriBuilder
             .path("/v2.0/api/members")
             .queryParam("include_fields", "true")
+            .queryParam("limit", "1000") // Fetch up to 1000
             .build())
         .header("Authorization", "Bearer " + accessToken)
         .retrieve()
         .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
         })
         .block();
+
+    return paginateListResult(response, "members", page, limit);
   }
 
   public Map<String, Object> createMember(String memberId, Map<String, Object> memberData) {
@@ -252,19 +269,22 @@ public class EformsignService {
   }
 
   // --- Group Management ---
-  public Map<String, Object> getGroups(String memberId) {
+  public Map<String, Object> getGroups(String memberId, Integer page, Integer limit) {
     String accessToken = (String) getAccessToken(memberId).get("access_token");
-    return webClient.get()
+    Map<String, Object> response = webClient.get()
         .uri(uriBuilder -> uriBuilder
             .path("/v2.0/api/groups")
             .queryParam("include_member", "true")
             .queryParam("include_field", "true")
+            .queryParam("limit", "1000") // Fetch up to 1000
             .build())
         .header("Authorization", "Bearer " + accessToken)
         .retrieve()
         .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
         })
         .block();
+
+    return paginateListResult(response, "groups", page, limit);
   }
 
   public Map<String, Object> createGroup(String memberId, Map<String, Object> groupData) {
@@ -307,6 +327,52 @@ public class EformsignService {
         .retrieve()
         .toBodilessEntity()
         .block();
+  }
+
+  // --- Helper Methods ---
+  private Map<String, Object> paginateListResult(Map<String, Object> response, String listKey, Integer page,
+      Integer limit) {
+    Map<String, Object> result = new HashMap<>();
+    List<?> fullList = new ArrayList<>();
+
+    // Extract list
+    if (response != null) {
+      if (response.containsKey(listKey)) {
+        Object obj = response.get(listKey);
+        if (obj instanceof List) {
+          fullList = (List<?>) obj;
+        }
+      } else if (response.containsKey("data")) {
+        // Some APIs wrap it in data? No, usually root or data property.
+        // Let's assume response IS the data map from Eformsign usually.
+        // Actually most eformsign APIs return { "api_status":..., "list_key": [...] }
+        // OR they return wrapping "data" struct like the token one?
+        // From getTemplates usage: response.data.data?.forms.
+        // The API calls here return the raw Map from WebClient.
+      }
+    }
+
+    // If the response itself is the list (unlikely) or contained in key
+    // Check if fullList is empty and response has it differently
+    // The existing getTemplates code did: response.data.data?.forms... on frontend.
+    // Backend returns what WebClient returns.
+    // Let's rely on standard keys: "forms", "members", "groups".
+
+    int total = fullList.size();
+    int pageNum = (page != null && page > 0) ? page : 1;
+    int limitNum = (limit != null && limit > 0) ? limit : 20;
+    int fromIndex = (pageNum - 1) * limitNum;
+
+    List<?> pagedList = new ArrayList<>();
+    if (fromIndex < total) {
+      pagedList = fullList.subList(fromIndex, Math.min(fromIndex + limitNum, total));
+    }
+
+    result.put(listKey, pagedList);
+    result.put("total_count", total);
+    // Preserve other top-level keys if needed?
+    // Ideally yes, but for now just list and total logic is key.
+    return result;
   }
 
   public Map<String, Object> getAccessToken(String memberId) {

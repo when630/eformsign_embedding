@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
-import { Plus, Trash2, Edit, X, Search, UserPlus, Check, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Edit, X, Search, UserPlus, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import clsx from "clsx";
 
 interface Member {
   id: string;
@@ -22,6 +23,11 @@ export default function GroupManagementPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Member Selection State
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -45,7 +51,7 @@ export default function GroupManagementPage() {
   useEffect(() => {
     fetchGroups();
     fetchMembers();
-  }, []);
+  }, [page]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -59,10 +65,15 @@ export default function GroupManagementPage() {
   }, []);
 
   const fetchGroups = async () => {
+    setLoading(true);
     try {
-      const response = await api.get("/eformsign/company/groups");
-      const list = response.data.data?.groups || response.data.data || [];
+      const response = await api.get(`/eformsign/company/groups?page=${page}&limit=${limit}`);
+      const data = response.data.data;
+      const list = data?.groups || data || [];
+      const total = data?.total_count || list.length || 0;
+
       setGroups(list);
+      setTotalCount(total);
     } catch (error) {
       console.error("Failed to fetch groups", error);
     } finally {
@@ -195,6 +206,8 @@ export default function GroupManagementPage() {
     group.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.ceil(totalCount / limit);
+
   return (
     <div className="min-h-screen p-8 max-w-6xl mx-auto">
       <header className="mb-10 flex justify-between items-center">
@@ -214,64 +227,118 @@ export default function GroupManagementPage() {
         </button>
       </header>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap">
-            <thead className="bg-gray-50">
-              <tr className="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
-                <th className="px-4 py-3 font-medium">그룹명</th>
-                <th className="px-4 py-3 font-medium">설명</th>
-                <th className="px-4 py-3 font-medium text-center">멤버 수</th>
-                <th className="px-4 py-3 font-medium text-center">관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredGroups.map((group) => (
-                <tr
-                  key={group.id}
-                  className="hover:bg-blue-50/50 cursor-pointer transition-colors text-sm"
-                  onClick={() => handleOpenEdit(group)}
-                >
-                  <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></div>
-                    {group.name}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 truncate max-w-xs">{group.description || "-"}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                      {group.members ? group.members.length : 0}명
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-end gap-2">
+      {loading ? <div>Loading...</div> : (
+        <>
+          <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left whitespace-nowrap">
+                <thead className="bg-gray-50">
+                  <tr className="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
+                    <th className="px-4 py-3 font-medium">그룹명</th>
+                    <th className="px-4 py-3 font-medium">설명</th>
+                    <th className="px-4 py-3 font-medium text-center">멤버 수</th>
+                    <th className="px-4 py-3 font-medium text-center">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredGroups.map((group) => (
+                    <tr
+                      key={group.id}
+                      className="hover:bg-blue-50/50 cursor-pointer transition-colors text-sm"
+                      onClick={() => handleOpenEdit(group)}
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></div>
+                        {group.name}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 truncate max-w-xs">{group.description || "-"}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                          {group.members ? group.members.length : 0}명
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(group); }}
+                            className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                            title="수정"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(group.id, e)}
+                            className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredGroups.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-12 text-center text-gray-400">
+                        <div className="flex flex-col items-center">
+                          <UserPlus size={48} className="mb-4 opacity-20" />
+                          <p>등록된 그룹이 없습니다.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalCount > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex-1 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{' '}
+                    <span className="font-medium">{totalCount}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(group); }}
-                        className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"
-                        title="수정"
+                        key={i + 1}
+                        onClick={() => setPage(i + 1)}
+                        className={clsx(
+                          "relative inline-flex items-center px-4 py-2 border text-sm font-medium",
+                          page === i + 1
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        )}
                       >
-                        <Edit size={16} />
+                        {i + 1}
                       </button>
-                      <button
-                        onClick={(e) => handleDelete(group.id, e)}
-                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
-                        title="삭제"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredGroups.length === 0 && (
-            <div className="p-12 text-center text-gray-400 flex flex-col items-center">
-              <UserPlus size={48} className="mb-4 opacity-20" />
-              <p>등록된 그룹이 없습니다.</p>
+                    ))}
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages || totalPages === 0}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-      </div>
+        </>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

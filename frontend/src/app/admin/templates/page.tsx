@@ -23,10 +23,15 @@ export default function TemplateManagementPage() {
   }, []);
 
   const fetchTemplates = async () => {
+    setLoading(true);
     try {
-      const response = await api.get("/eformsign/templates");
+      // Fetch all templates (large limit)
+      const response = await api.get(`/eformsign/templates?limit=1000`);
       console.log("Templates API Response:", response.data);
-      const list = response.data.data?.forms || response.data.data?.templates || [];
+
+      const data = response.data.data;
+      const list = data?.forms || data?.templates || [];
+
       // Ensure it is an array
       if (Array.isArray(list)) {
         setTemplates(list);
@@ -75,61 +80,63 @@ export default function TemplateManagementPage() {
       {loading ? (
         <div>Loading templates...</div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-gray-50">
-                <tr className="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
-                  <th className="px-4 py-3 font-medium">템플릿명</th>
-                  <th className="px-4 py-3 font-medium text-center">버전</th>
-                  <th className="px-4 py-3 font-medium text-center">소유자</th>
-                  <th className="px-4 py-3 font-medium text-center">수정일</th>
-                  <th className="px-4 py-3 font-medium text-center">관리</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {templates.map((tpl) => (
-                  <tr key={tpl.form_id} className="hover:bg-blue-50/50 transition-colors text-sm">
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      <div className="flex items-center gap-3">
-                        <Files className="w-5 h-5 text-gray-300" />
-                        {tpl.name}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-500">v{tpl.version}</td>
-                    <td className="px-4 py-3 text-center text-gray-500">{tpl.owner_name}</td>
-                    <td className="px-4 py-3 text-center text-gray-500">
-                      {new Date(tpl.update_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => handleEdit(tpl.form_id)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="수정">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDuplicate(tpl.form_id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="복제">
-                          <Copy className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(tpl.form_id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="삭제">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+        <>
+          <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left whitespace-nowrap">
+                <thead className="bg-gray-50">
+                  <tr className="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
+                    <th className="px-4 py-3 font-medium">템플릿명</th>
+                    <th className="px-4 py-3 font-medium text-center">버전</th>
+                    <th className="px-4 py-3 font-medium text-center">소유자</th>
+                    <th className="px-4 py-3 font-medium text-center">수정일</th>
+                    <th className="px-4 py-3 font-medium text-center">관리</th>
                   </tr>
-                ))}
-                {templates.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-gray-400">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <Files className="w-8 h-8 opacity-20" />
-                        <p>No templates found.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {templates.map((tpl) => (
+                    <tr key={tpl.form_id} className="hover:bg-blue-50/50 transition-colors text-sm">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <div className="flex items-center gap-3">
+                          <Files className="w-5 h-5 text-gray-300" />
+                          {tpl.name}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-500">v{tpl.version}</td>
+                      <td className="px-4 py-3 text-center text-gray-500">{tpl.owner_name}</td>
+                      <td className="px-4 py-3 text-center text-gray-500">
+                        {new Date(tpl.update_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => handleEdit(tpl.form_id)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="수정">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDuplicate(tpl.form_id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="복제">
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(tpl.form_id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="삭제">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {templates.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Files className="w-8 h-8 opacity-20" />
+                          <p>No templates found.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

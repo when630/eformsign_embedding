@@ -26,8 +26,8 @@ public class EformsignController {
   }
 
   @GetMapping("/templates")
-  public ApiResponse<Map<String, Object>> getTemplates(@LoginUser String userId) {
-    // userId maps to member_id
+  public ApiResponse<Map<String, Object>> getTemplates(
+      @LoginUser String userId) {
     return ApiResponse.success(eformsignService.getTemplates(userId));
   }
 
@@ -72,8 +72,11 @@ public class EformsignController {
 
   // --- Member Management ---
   @GetMapping("/company/members")
-  public ApiResponse<Map<String, Object>> getMembers(@LoginUser String userId) {
-    return ApiResponse.success(eformsignService.getMembers(userId));
+  public ApiResponse<Map<String, Object>> getMembers(
+      @LoginUser String userId,
+      @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "1") Integer page,
+      @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "20") Integer limit) {
+    return ApiResponse.success(eformsignService.getMembers(userId, page, limit));
   }
 
   @org.springframework.web.bind.annotation.PostMapping("/company/members")
@@ -98,8 +101,11 @@ public class EformsignController {
 
   // --- Group Management ---
   @GetMapping("/company/groups")
-  public ApiResponse<Map<String, Object>> getGroups(@LoginUser String userId) {
-    return ApiResponse.success(eformsignService.getGroups(userId));
+  public ApiResponse<Map<String, Object>> getGroups(
+      @LoginUser String userId,
+      @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "1") Integer page,
+      @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "20") Integer limit) {
+    return ApiResponse.success(eformsignService.getGroups(userId, page, limit));
   }
 
   @org.springframework.web.bind.annotation.PostMapping("/company/groups")

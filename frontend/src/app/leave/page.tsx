@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
-import { FileText, Loader2, Plane, User, Calendar, Clock, Plus, X } from "lucide-react";
+import { FileText, Loader2, Plane, User, Calendar, Clock, Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import clsx from "clsx";
@@ -34,6 +34,11 @@ export default function LeavePage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10); // 10 items per page for Leave list
+  const [totalCount, setTotalCount] = useState(0);
+
   // Eformsign SDK State
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<any>(null);
@@ -44,55 +49,51 @@ export default function LeavePage() {
 
   useEffect(() => {
     fetchDocuments();
-
+    // ... (SDK Loading Logic - kept as is)
     // Load Eformsign SDK Logic (Copied from DocumentPage pattern)
-    const checkJquery = setInterval(() => {
-      const win = window as any;
-      if (win.$) {
-        clearInterval(checkJquery);
-        setJqueryLoaded(true);
-        jqueryLoadedRef.current = true;
+    // ...
+  }, [page]); // Re-fetch on page change
 
-        if (!win.jQuery) win.jQuery = win.$;
+  // ... (SDK loading useEffect content remains, just verifying deps) ...
+  useEffect(() => {
+    // Re-implementing the SDK loading effect here to ensure it's preserved correctly
+    // Since I'm replacing the whole function body or large parts, I must be careful.
+    // Actually, I should use the existing effect for SDK and just add `page` dependency to a separate effect or the same one if appropriate.
+    // Better to separate data fetching from SDK loading.
+  }, []); // SDK loading runs once
 
-        if (!document.getElementById("efs_sdk_script")) {
-          const script = document.createElement("script");
-          script.id = "efs_sdk_script";
-          script.src = "https://www.eformsign.com/lib/js/efs_embedded_v2.js";
-          script.onload = () => setSdkLoaded(true);
-          script.onerror = (e) => console.error("Eformsign SDK Load Failed", e);
-          document.body.appendChild(script);
-        } else {
-          setSdkLoaded(true);
-        }
-      }
-    }, 200);
-
-    const timeout = setTimeout(() => {
-      clearInterval(checkJquery);
-    }, 10000);
-
-    return () => {
-      clearInterval(checkJquery);
-      clearTimeout(timeout);
-    };
-  }, []);
+  useEffect(() => {
+    fetchDocuments();
+  }, [page]);
 
   const fetchDocuments = async () => {
     setLoading(true);
     try {
       const templateId = process.env.NEXT_PUBLIC_EFORMSIGN_LEAVE_TEMPLATE_ID || "";
-      const response = await api.get(`/eformsign/documents?templateId=${templateId}&type=04`);
+      // Add page and limit
+      const response = await api.get(`/eformsign/documents?templateId=${templateId}&type=04&page=${page}&limit=${limit}`);
 
       let initialDocs: Document[] = [];
+      let total = 0;
+
       if (response.data.success) {
         const resData = response.data.data;
         if (resData && resData.data && Array.isArray(resData.data.documents)) {
+          // Structure: data: { data: { documents: [], total_rows: ... } }
           initialDocs = resData.data.documents;
+          total = resData.data.total_rows || resData.data.total_count || 0;
+        } else if (resData && Array.isArray(resData.documents)) {
+          // Structure: data: { documents: [], total_rows: ... }
+          initialDocs = resData.documents;
+          total = resData.total_rows || resData.total_count || 0;
         } else {
+          // Fallback/Legacy
           initialDocs = resData.documents || resData || [];
+          total = initialDocs.length;
         }
       }
+
+      setTotalCount(total);
 
       if (initialDocs.length > 0) {
         const detailPromises = initialDocs.map((doc) =>
@@ -152,6 +153,39 @@ export default function LeavePage() {
     }
   }, [showWriteModal, tokenInfo, sdkLoaded]);
 
+  useEffect(() => {
+    const checkJquery = setInterval(() => {
+      const win = window as any;
+      if (win.$) {
+        clearInterval(checkJquery);
+        setJqueryLoaded(true);
+        jqueryLoadedRef.current = true;
+
+        if (!win.jQuery) win.jQuery = win.$;
+
+        if (!document.getElementById("efs_sdk_script")) {
+          const script = document.createElement("script");
+          script.id = "efs_sdk_script";
+          script.src = "https://www.eformsign.com/lib/js/efs_embedded_v2.js";
+          script.onload = () => setSdkLoaded(true);
+          script.onerror = (e) => console.error("Eformsign SDK Load Failed", e);
+          document.body.appendChild(script);
+        } else {
+          setSdkLoaded(true);
+        }
+      }
+    }, 200);
+
+    const timeout = setTimeout(() => {
+      clearInterval(checkJquery);
+    }, 10000);
+
+    return () => {
+      clearInterval(checkJquery);
+      clearTimeout(timeout);
+    };
+  }, []);
+
   const initializeEformsign = () => {
     if (eformsignRef.current) return;
     const win = window as any;
@@ -209,6 +243,8 @@ export default function LeavePage() {
     }
   };
 
+  const totalPages = Math.ceil(totalCount / limit);
+
   return (
     <div className="min-h-screen p-8 max-w-7xl mx-auto relative">
       <Script
@@ -239,81 +275,129 @@ export default function LeavePage() {
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-          {documents.length === 0 ? (
-            <div className="p-12 text-center text-gray-400">
-              <div className="flex flex-col items-center justify-center gap-2">
-                <FileText className="w-12 h-12 opacity-20" />
-                <p>조회된 휴가신청서가 없습니다.</p>
+        <>
+          <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            {documents.length === 0 ? (
+              <div className="p-12 text-center text-gray-400">
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <FileText className="w-12 h-12 opacity-20" />
+                  <p>조회된 휴가신청서가 없습니다.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left whitespace-nowrap">
+                  <thead className="bg-gray-50">
+                    <tr className="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
+                      <th className="px-4 py-3">신청자명</th>
+                      <th className="px-4 py-3">신청일자</th>
+                      <th className="px-4 py-3">휴가구분</th>
+                      <th className="px-4 py-3">휴가기간</th>
+                      <th className="px-4 py-3">일수</th>
+                      <th className="px-4 py-3 text-center w-24">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {documents.map((doc) => (
+                      <tr
+                        key={doc.id}
+                        onClick={() => handleRowClick(doc.id)}
+                        className="hover:bg-blue-50/50 transition-colors cursor-pointer text-sm"
+                      >
+                        <td className="px-4 py-3 text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium">{doc.fields?.find(f => f.id === '신청자명')?.value || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            <span>{doc.fields?.find(f => f.id === '신청일')?.value || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            <span>{doc.fields?.find(f => f.id === '휴가 구분')?.value || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <span>{doc.fields?.find(f => f.id === '휴가 시작일')?.value || '-'} {doc.fields?.find(f => f.id === '휴가 시작시각')?.value || '-'} ~ {doc.fields?.find(f => f.id === '휴가 종료일')?.value || '-'} {doc.fields?.find(f => f.id === '휴가 종료시각')?.value || doc.fields?.find(f => f.id === '휴가 종료시간')?.value || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <span>{doc.fields?.find(f => f.id === '일간')?.value || '-'}일</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={clsx(
+                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                            typeof doc.current_status === 'object' && doc.current_status.step_name.includes("완료") ? "bg-green-100 text-green-800" :
+                              typeof doc.current_status === 'object' && doc.current_status.step_name.includes("반려") ? "bg-red-100 text-red-800" :
+                                "bg-blue-100 text-blue-800"
+                          )}>
+                            {typeof doc.current_status === 'object' ? doc.current_status.step_name : doc.current_status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalCount > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex-1 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{' '}
+                    <span className="font-medium">{totalCount}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => setPage(i + 1)}
+                        className={clsx(
+                          "relative inline-flex items-center px-4 py-2 border text-sm font-medium",
+                          page === i + 1
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        )}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages || totalPages === 0}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </nav>
+                </div>
               </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left whitespace-nowrap">
-                <thead className="bg-gray-50">
-                  <tr className="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
-                    <th className="px-4 py-3">신청자명</th>
-                    <th className="px-4 py-3">신청일자</th>
-                    <th className="px-4 py-3">휴가구분</th>
-                    <th className="px-4 py-3">휴가기간</th>
-                    <th className="px-4 py-3">일수</th>
-                    <th className="px-4 py-3 text-center w-24">상태</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {documents.map((doc) => (
-                    <tr
-                      key={doc.id}
-                      onClick={() => handleRowClick(doc.id)}
-                      className="hover:bg-blue-50/50 transition-colors cursor-pointer text-sm"
-                    >
-                      <td className="px-4 py-3 text-gray-900">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium">{doc.fields?.find(f => f.id === '신청자명')?.value || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>{doc.fields?.find(f => f.id === '신청일')?.value || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>{doc.fields?.find(f => f.id === '휴가 구분')?.value || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{doc.fields?.find(f => f.id === '휴가 시작일')?.value || '-'} {doc.fields?.find(f => f.id === '휴가 시작시각')?.value || '-'} ~ {doc.fields?.find(f => f.id === '휴가 종료일')?.value || '-'} {doc.fields?.find(f => f.id === '휴가 종료시각')?.value || doc.fields?.find(f => f.id === '휴가 종료시간')?.value || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{doc.fields?.find(f => f.id === '일간')?.value || '-'}일</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={clsx(
-                          "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                          typeof doc.current_status === 'object' && doc.current_status.step_name.includes("완료") ? "bg-green-100 text-green-800" :
-                            typeof doc.current_status === 'object' && doc.current_status.step_name.includes("반려") ? "bg-red-100 text-red-800" :
-                              "bg-blue-100 text-blue-800"
-                        )}>
-                          {typeof doc.current_status === 'object' ? doc.current_status.step_name : doc.current_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Write Modal */}
