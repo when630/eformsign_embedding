@@ -240,8 +240,7 @@ function DocumentViewerContent() {
             {!tokenInfo.api_key?.company?.user_key && <div className="text-red-500 mb-2">Warning: User Key missing from config</div>}
             <iframe
               id="eformsign_iframe"
-              className="w-full bg-white shadow-sm border border-gray-200"
-              style={{ height: "100%" }}
+              className="w-full h-full bg-white shadow-sm border border-gray-200"
             />
           </div>
         )}
