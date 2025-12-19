@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Collections;
 
 @Slf4j
 @Service
@@ -95,49 +96,24 @@ public class EformsignService {
       Integer page, Integer limit) {
     String accessToken = (String) getAccessToken(memberId).get("access_token");
 
-    Map<String, Object> body = new HashMap<>();
-    String typeCode = (type != null && !type.isEmpty()) ? type : "01"; // Default to 01 (Todo) or 04 (All)
+    String typeCode = (type != null && !type.isEmpty()) ? type : "01"; // Default to 01 (Todo)
 
     int pageNum = (page != null && page > 0) ? page : 1;
     int limitNum = (limit != null && limit > 0) ? limit : 20;
     int skip = (pageNum - 1) * limitNum;
 
-    body.put("type", typeCode);
-    body.put("limit", String.valueOf(limitNum));
-    body.put("skip", String.valueOf(skip));
-
-    List<String> templateIds = new ArrayList<>();
-
-    if (templateId != null && !templateId.isEmpty()) {
-      templateIds.add(templateId);
-    } else if (documentName != null && !documentName.isEmpty()) {
-      // Try lookup by name
+    // Resolve Template ID if documentName is provided but templateId is not
+    String resolvedTemplateId = templateId;
+    if ((resolvedTemplateId == null || resolvedTemplateId.isEmpty())
+        && (documentName != null && !documentName.isEmpty())) {
       try {
-        // We need to fetch all templates to find the ID, so pass null/null for simple
-        // fetch if this method was recursive,
-        // but here getTemplates is now paginated.
-        // For lookup, we probably want *all* templates.
-        // Let's call the raw API or passed large limit.
-        // For safety, let's just make a private internal method for fetching all or use
-        // a large limit here.
         Map<String, Object> templatesResponse = getTemplates(memberId);
-        List<Map<String, Object>> forms = (List<Map<String, Object>>) templatesResponse.get("forms"); // The
-                                                                                                      // paginateListResult
-                                                                                                      // puts generic
-                                                                                                      // list in
-                                                                                                      // "forms"? No,
-                                                                                                      // paginateListResult
-                                                                                                      // returns
-                                                                                                      // consistent
-                                                                                                      // structure.
-        // Wait, paginateListResult will return { "forms": [...], "total_count": ... }
-        // so this is fine.
-
+        List<Map<String, Object>> forms = (List<Map<String, Object>>) templatesResponse.get("forms");
         if (forms != null) {
           for (Map<String, Object> form : forms) {
-            String formName = (String) form.get("form_name");
-            if (documentName.equals(formName)) {
-              templateIds.add((String) form.get("form_id"));
+            if (documentName.equals(form.get("form_name"))) {
+              resolvedTemplateId = (String) form.get("form_id");
+              break;
             }
           }
         }
@@ -146,27 +122,50 @@ public class EformsignService {
       }
     }
 
-    body.put("template_ids", templateIds.toArray(new String[0]));
+    String finalTemplateId = resolvedTemplateId;
 
-    if (documentName != null && !documentName.isEmpty() && templateIds.isEmpty()) {
-      body.put("title", documentName);
-    } else {
-      body.put("title", "");
+    Map<String, Object> docRequest = new HashMap<>();
+    docRequest.put("type", typeCode);
+    docRequest.put("limit", limitNum);
+    docRequest.put("skip", skip);
+
+    // Put template_ids in BODY as a List<String> to avoid "Invalid JSON format"
+    // (Schema Validation Error)
+    if (finalTemplateId != null && !finalTemplateId.isEmpty()) {
+      docRequest.put("template_ids", Collections.singletonList(finalTemplateId));
     }
 
-    body.put("content", "");
-    body.put("title_and_content", "");
-    body.put("return_fields", java.util.Arrays.asList("신청자명", "신청일", "일간"));
+    // Also put title (document_name) in BODY if needed
+    // Assuming API accepts 'document_name' or 'title' in filtering body.
+    // Standard Eformsign uses 'document_name' usually, but custom wrapper might
+    // differ.
+    // Let's use 'document_name' which is standard for Document Object, but for
+    // Filter?
+    // Let's stick to valid JSON types now.
+    if (documentName != null && !documentName.isEmpty()) {
+      docRequest.put("document_name", documentName);
+    }
 
-    return webClient.method(org.springframework.http.HttpMethod.GET)
-        .uri("/v2.0/api/documents")
-        .header("Authorization", "Bearer " + accessToken)
-        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-        .bodyValue(body)
-        .retrieve()
-        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-        })
-        .block();
+    try {
+      return webClient.method(org.springframework.http.HttpMethod.GET)
+          .uri("/v2.0/api/documents")
+          .header("Authorization", "Bearer " + accessToken)
+          .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+          .bodyValue(docRequest)
+          .retrieve()
+          .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+          })
+          .block();
+    } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+      if (e.getStatusCode().value() == 403) {
+        log.warn("Access denied (403) for getDocuments with type {}", typeCode);
+        Map<String, Object> empty = new HashMap<>();
+        empty.put("documents", new ArrayList<>());
+        empty.put("total_rows", 0);
+        return empty;
+      }
+      throw e;
+    }
   }
 
   public Map<String, Object> getDocument(String memberId, String documentId) {

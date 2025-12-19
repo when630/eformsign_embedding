@@ -69,7 +69,15 @@ export default function LeavePage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const templateId = process.env.NEXT_PUBLIC_EFORMSIGN_LEAVE_TEMPLATE_ID || "";
+      const templateId = process.env.NEXT_PUBLIC_EFORMSIGN_LEAVE_TEMPLATE_ID;
+
+      if (!templateId) {
+        console.warn("NEXT_PUBLIC_EFORMSIGN_LEAVE_TEMPLATE_ID is not set. Skipping fetch.");
+        setDocuments([]);
+        setLoading(false);
+        return;
+      }
+
       // Add page and limit
       const response = await api.get(`/eformsign/documents?templateId=${templateId}&type=04&page=${page}&limit=${limit}`);
 

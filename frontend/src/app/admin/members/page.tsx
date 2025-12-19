@@ -125,7 +125,7 @@ function EformsignMemberManager() {
     e.preventDefault();
     try {
       const payload = {
-        account: {
+        member: {
           id: formData.id,
           password: formData.password,
           name: formData.name,
@@ -200,9 +200,9 @@ function EformsignMemberManager() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Structure based on user request: { account: { ... } }
+      // Structure changed to 'member' to match Eformsign API expectation
       const payload = {
-        account: {
+        member: {
           id: editFormData.id,
           name: editFormData.name,
           enabled: editFormData.enabled,
@@ -240,6 +240,16 @@ function EformsignMemberManager() {
         : [...prev.role, role];
       return { ...prev, role: roles };
     });
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "company_manager": return "bg-purple-100 text-purple-700 border-purple-200";
+      case "template_manager": return "bg-orange-100 text-orange-700 border-orange-200";
+      case "document_manager": return "bg-green-100 text-green-700 border-green-200";
+      case "member": return "bg-gray-100 text-gray-700 border-gray-200";
+      default: return "bg-blue-50 text-blue-700 border-blue-200";
+    }
   };
 
   return (
@@ -287,7 +297,7 @@ function EformsignMemberManager() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {m.role && m.role.slice(0, 2).map((r: string) => (
-                          <span key={r} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-xs border border-gray-200">
+                          <span key={r} className={`px-1.5 py-0.5 rounded text-xs border ${getRoleBadgeColor(r)}`}>
                             {r}
                           </span>
                         ))}
@@ -426,19 +436,25 @@ function EformsignMemberManager() {
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">역할 (Roles)</label>
                   <div className="flex gap-2 flex-wrap">
-                    {["company_manager", "template_manager", "member"].map(role => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => toggleRole(role)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${editFormData.role.includes(role)
-                          ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                          }`}
-                      >
-                        {role}
-                      </button>
-                    ))}
+                    {["company_manager", "template_manager", "document_manager", "member"].map(role => {
+                      const isReadOnly = role === "document_manager";
+                      return (
+                        <button
+                          key={role}
+                          type="button"
+                          disabled={isReadOnly}
+                          onClick={() => !isReadOnly && toggleRole(role)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${editFormData.role.includes(role)
+                            ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                            : "bg-white text-gray-600 border-gray-200" // Removed hover if read-only
+                            } ${!isReadOnly && !editFormData.role.includes(role) ? "hover:bg-gray-50" : ""} ${isReadOnly ? "opacity-60 cursor-not-allowed" : ""
+                            }`}
+                        >
+                          {role}
+                          {isReadOnly && <span className="ml-1 text-xs opacity-70"></span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -534,7 +550,7 @@ function EformsignMemberManager() {
                     <label className="text-sm font-medium text-gray-500 block mb-2">역할 (Roles)</label>
                     <div className="flex flex-wrap gap-2">
                       {selectedMember.role && selectedMember.role.map((r: string) => (
-                        <span key={r} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-100 shadow-sm">
+                        <span key={r} className={`px-3 py-1 rounded-full text-sm font-medium border shadow-sm ${getRoleBadgeColor(r)}`}>
                           {r}
                         </span>
                       ))}
