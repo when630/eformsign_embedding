@@ -22,17 +22,17 @@ spring:
 
 app:
   admin:
-    id: lim063033@gmail.com
+    id: eformsign@forcs.com
     password: password
 
 eformsign:
   api:
     url: https://kr-api.eformsign.com
-    key: "bacee34d-2e6c-410c-a539-ff233de4c222"
+    key: "e7369e4c-f4fb-42f1-8011-a53ddd50e4ac"
   secret:
     key: "1234"
   company:
-    id: "42a6d34517864fbca8d3788927089f60"
+    id: "a52733a87c7143719638a316c4306a3f"
 logging:
   level:
     com.eformsign: DEBUG
