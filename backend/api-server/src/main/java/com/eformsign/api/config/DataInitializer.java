@@ -30,6 +30,16 @@ public class DataInitializer implements CommandLineRunner {
   @Override
   public void run(String... args) throws Exception {
     createAdminAccount();
+
+    // Debug: Test Access Token
+    try {
+      log.info("Testing Access Token Generation...");
+      Map<String, Object> token = eformsignService.getAccessToken(adminId);
+      log.info("Access Token Success: {}", token != null);
+    } catch (Exception e) {
+      log.error("Access Token Failed in DataInitializer", e);
+    }
+
     syncMembersfromEformsign();
   }
 
