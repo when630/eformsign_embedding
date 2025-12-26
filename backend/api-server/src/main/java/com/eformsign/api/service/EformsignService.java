@@ -381,7 +381,7 @@ public class EformsignService {
     String base64ApiKey = Base64.getEncoder().encodeToString(apiKey.getBytes(StandardCharsets.UTF_8));
 
     Map<String, Object> requestBody = new HashMap<>();
-    requestBody.put("execution_time", String.valueOf(executionTime));
+    requestBody.put("execution_time", executionTime);
     requestBody.put("member_id", memberId);
 
     try {
